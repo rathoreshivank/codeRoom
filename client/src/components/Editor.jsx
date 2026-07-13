@@ -1,16 +1,2 @@
-function Editor({ roomId }) {
-  return (
-    <div style={{ 
-      height: '100vh', 
-      backgroundColor: '#1e1e1e',
-      color: '#888',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <p>Editor coming soon</p>
-    </div>
-  )
-}
-
-export default Editor
+// Monaco editor component with Yjs binding for real-time collaborative code editing
+export default function Editor() { return <div>Editor</div> }

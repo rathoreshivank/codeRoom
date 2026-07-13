@@ -1,0 +1,6 @@
+# Root-level gitignore covering both client and server
+node_modules/
+.env
+dist/
+dist-ssr/
+*.log

@@ -1,8 +1,7 @@
-const express = require("express");
-const router = express.Router();
+import express from 'express'
+const router = express.Router()
+import { explainCode } from '../controllers/aiController.js'
 
-router.get("/health", (req, res) => {
-    res.status(200).json({ status: "ok", message: "AI routes are working" });
-});
+router.post('/explain', explainCode)
 
-module.exports = router;
+export default router

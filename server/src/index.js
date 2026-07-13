@@ -1,66 +1,58 @@
-const express = require("express");
-const http = require("http");
-const path = require("path");
-const { Server } = require("socket.io");
-const mongoose = require("mongoose");
-const cors = require("cors");
-require("dotenv").config({ path: path.resolve(__dirname, "..", ".env") });
+import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
+import http from "http";
+import cors from "cors";
+import mongoose from "mongoose";
+import { Server } from "socket.io";
+
+import roomRoutes from "./routes/roomRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
+import socketHandler from "./socket/socketHandler.js";
 
 const app = express();
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: { origin: "http://localhost:5173" },
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+  },
 });
 
-app.use(cors());
+//Express middleware
+
+app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
 
-// MongoDB connection
-const mongoUri = process.env.MONGO_URI;
+// REST routes
+app.use("/api/room", roomRoutes);
+app.use("/api/ai", aiRoutes);
 
-if (!mongoUri) {
-  console.error(
-    "MONGO_URI is not defined. Make sure the server/.env file exists and contains the MongoDB connection string."
-  );
-} else {
-  mongoose
-    .connect(mongoUri)
-    .then(() => console.log("MongoDB connected"))
-    .catch((err) => console.error("MongoDB connection error:", err));
-}
+// Simple health-check endpoint
+app.get("/health", (req, res) => res.json({ status: "ok" }));
 
-// AI route
-app.use("/api/ai", require("./routes/aiRoutes"));
-app.use("/api/room", require("./routes/roomRoutes"));
+//Register Socket.IO event handlers
+socketHandler(io);
 
-// Socket.IO connection
-// socket is the individual, specific connection between the server and one single user
-io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
+//Connect to MongoDB, then start the server
+const PORT = process.env.PORT || 5000;
 
-  // join room
-  socket.on("join-room", (roomId) => {
-    socket.join(roomId);
-    console.log(`User ${socket.id} joined room ${roomId}`);
+const start = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ MongoDB connected successfully");
+  } catch (err) {
+    console.error("❌ MongoDB connection failed:", err.message);
+  }
+
+  server.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`REST API: http://localhost:${PORT}/api/room`);
+    console.log(`Health: http://localhost:${PORT}/health`);
   });
+};
 
-  // Real-time code synchronization
-  // .emit('code-update', code): This is the broadcast command. It fires an event called 'code-update' back to the frontend, carrying the new code payload. The .to(roomId) part ensures that this update is sent only to other users in the same room, excluding the sender. This way, when one user makes a change to the code, all other users in the same room will receive the updated code in real-time, allowing for collaborative coding sessions.
-  socket.on("code-change", ({ roomId, code }) => {
-    socket.to(roomId).emit("code-update", code);
-  });
-
-  socket.on("chat-message", (data) => {
-    socket.to(data.roomId).emit("chat-message", data);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-  });
-});
-
-// start the server
-server.listen(process.env.PORT || 5000, () => {
-  console.log("Server running on port 5000");
-});
+start();
